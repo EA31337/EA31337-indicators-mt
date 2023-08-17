@@ -12,16 +12,23 @@
 
 Collection of statistical indicators used for EA31337 and its strategies.
 
-Related project:
+## Statistical indicators
 
-- [EA31337 framework][gh-repo-classes]
-- [EA31337 strategies][gh-repo-strats]
+Statistical indicators used for the analysis of variety of assets (e.g. account
+or memory). They are useful tools designed to provide insights into various
+aspects of activities and usage. These indicators are commonly used to
+assess performance, resource allocation, and efficiency.
 
 ## Dependencies
 
 | Tag      | Classes    |
 |:--------:|:----------:|
 | v1.000   | v3.000.1   |
+
+Related project:
+
+- [EA31337 framework][gh-repo-classes]
+- [EA31337 strategies][gh-repo-strats]
 
 <!-- Named links -->
 
