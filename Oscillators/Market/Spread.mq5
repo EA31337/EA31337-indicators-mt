@@ -46,11 +46,24 @@
 #endif
 
 // Includes.
+#include <EA31337-classes/Std.h>
+
+// Includes.
 #include <EA31337-classes/Indicator.mqh>
 #include <EA31337-classes/SymbolInfo.mqh>
 
+// Spread calculation method.
+enum ENUM_SPREAD_METHOD {
+  SPREAD_METHOD_SYMBOL_INFO,
+  SPREAD_METHOD_ASK_BID_DIFF,
+  SPREAD_METHOD_COPY_SPREAD,
+  SPREAD_METHOD_SPREAD_INPUT_ARRAY,
+};
+
 // Input parameters.
-input int InpShift = 0;                                     // Shift
+input int InpShift = 0; // Shift
+input ENUM_SPREAD_METHOD InpSpreadMethod =
+    SPREAD_METHOD_ASK_BID_DIFF; // Spread Calculation Method
 
 // Global indicator buffers.
 double SpreadBuffer[];
@@ -66,8 +79,7 @@ void OnInit() {
   SetIndexBuffer(0, SpreadBuffer, INDICATOR_DATA);
   // Initialize indicator for the current account.
   symbolinfo = new SymbolInfo();
-  string short_name =
-      StringFormat("%s(%d)", INDI_SHORT_NAME, ::InpShift);
+  string short_name = StringFormat("%s(%d)", INDI_SHORT_NAME, ::InpShift);
   IndicatorSetString(INDICATOR_SHORTNAME, short_name);
   PlotIndexSetString(0, PLOT_LABEL, "Spread (pips)");
   // PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0);
@@ -88,6 +100,18 @@ void OnInit() {
   SetIndexStyle(4, DRAW_LINE);
 }
 
+/*
+  - How reliable is the spread[]?
+
+  - What about CopySpread() in MQL5 and CopyRates() in MQL4?
+    In MQ5 we can use CopyRates().
+  https://www.mql5.com/en/docs/constants/structures/mqlrates
+
+  Taking spread:
+  - double spread =
+  (double)(SymbolInfoInteger(_Symbol,SYMBOL_SPREAD)/MathPow(10,_Digits));
+*/
+
 /**
  * Calculate event handler function.
  */
@@ -96,18 +120,90 @@ int OnCalculate(const int rates_total, const int prev_calculated,
                 const double &high[], const double &low[],
                 const double &close[], const long &tick_volume[],
                 const long &volume[], const int &spread[]) {
-  int i, pos;
+  int i, _spread_buf[], _num_spreads;
+
   if (rates_total <= 0) {
     return (0);
   }
-  // Initialize calculations.
-  pos = prev_calculated == 0
-              ? 1 : prev_calculated - 1;
-  // Main calculations.
-  for (i = pos; i < rates_total && !IsStopped(); i++) {
-    uint _index = fmin(rates_total, fmax(0, i + ::InpShift));
-    SpreadBuffer[i] = spread[_index] * pow(10, symbolinfo.GetPipDigits());
+
+  ACQUIRE_BUFFER1(SpreadBuffer);
+
+  if (prev_calculated == 0) {
+    // Clearing buffer for testing purposes.
+    ArrayInitialize(SpreadBuffer, 0);
+
+    switch (InpSpreadMethod) {
+    case SPREAD_METHOD_SYMBOL_INFO:
+    case SPREAD_METHOD_ASK_BID_DIFF:
+    case SPREAD_METHOD_COPY_SPREAD:
+      _num_spreads = CopySpread(Symbol(), PERIOD_CURRENT, ::InpShift,
+                                rates_total, _spread_buf);
+
+      if (_num_spreads != rates_total) {
+        Alert("Error: CopySpread() failed. Insufficient data. Requested ",
+              rates_total, " items, but got only ", _num_spreads,
+              ". Error = ", GetLastError(), ".");
+        DebugBreak();
+      }
+
+      // We will copy _spread_buf into SpreadBuffer memory-wise.
+      ArraySetAsSeries(_spread_buf, false);
+      for (i = 0; i < rates_total; i++) {
+        SpreadBuffer[i] = _spread_buf[i];
+        Print(_spread_buf[i]);
+      }
+      break;
+
+    case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
+      // Copying input spread[] directly into SpreadBuffer.
+      for (i = 0; i < rates_total; i++) {
+        SpreadBuffer[i] = spread[i];
+      }
+      break;
+
+    default:
+      Alert("Error: Invalid spread method passes into InpSpreadMethod!");
+      DebugBreak();
+    }
+  } else {
+    int _spread;
+    double _ask, _bid;
+
+    switch (InpSpreadMethod) {
+    case SPREAD_METHOD_SYMBOL_INFO:
+      _spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+      break;
+
+    case SPREAD_METHOD_ASK_BID_DIFF:
+      _ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+      _bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+      _spread = (int)MathRound((_ask - _bid) * pow(10, symbolinfo.GetDigits()));
+      break;
+
+    case SPREAD_METHOD_COPY_SPREAD:
+      if (CopySpread(_Symbol, 0, ::InpShift, 1, _spread_buf) != 1) {
+        Alert("Error: CopySpread() failed. Insufficient data. Requested 1 "
+              "item, but got 0. Error = ",
+              GetLastError(), ".");
+        DebugBreak();
+      }
+      _spread = _spread_buf[0];
+      break;
+
+    case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
+      _spread = spread[rates_total - 1];
+      break;
+
+    default:
+      Alert("Error: Invalid spread method passes into InpSpreadMethod!");
+      DebugBreak();
+    }
+
+    SpreadBuffer[rates_total - 1] = _spread;
   }
+
+  RELEASE_BUFFER1(SpreadBuffer);
+
   // Returns new prev_calculated.
   return (rates_total);
 }
