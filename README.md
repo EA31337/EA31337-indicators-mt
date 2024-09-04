@@ -30,6 +30,7 @@ assess performance, resource allocation, and efficiency.
 Related project:
 
 - [EA31337 framework][gh-repo-classes]
+- [EA31337 indicators][gh-repo-indicators]
 - [EA31337 strategies][gh-repo-strats]
 
 <!-- Named links -->
@@ -49,6 +50,7 @@ Related project:
 [gha-image-compile-master]: https://github.com/EA31337/EA31337-indicators-stats/workflows/Compile/badge.svg?branch=master
 
 [gh-repo-classes]: https://github.com/EA31337/EA31337-classes
+[gh-repo-indicators]: https://github.com/EA31337/EA31337-indicators
 [gh-repo-strats]: https://github.com/EA31337/EA31337-strategies
 
 [tg-channel-image]: https://img.shields.io/badge/Telegram-join-0088CC.svg?logo=telegram
