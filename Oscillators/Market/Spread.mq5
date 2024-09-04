@@ -31,18 +31,18 @@
 
 // Indicator properties.
 #ifdef __MQL__
-#property copyright "2016-2023, EA31337 Ltd"
-#property link "https://ea31337.github.io"
-#property description INDI_FULL_NAME
-//--
-#property indicator_separate_window
-#property indicator_buffers 1
-#property indicator_plots 1
-#property indicator_type1 DRAW_LINE
-#property indicator_color1 Blue
-#property indicator_width1 2
-#property indicator_label1 "Spread"
-#property version "1.000"
+  #property copyright "2016-2023, EA31337 Ltd"
+  #property link "https://ea31337.github.io"
+  #property description INDI_FULL_NAME
+  //--
+  #property indicator_separate_window
+  #property indicator_buffers 1
+  #property indicator_plots 1
+  #property indicator_type1 DRAW_LINE
+  #property indicator_color1 Blue
+  #property indicator_width1 2
+  #property indicator_label1 "Spread"
+  #property version "1.000"
 #endif
 
 // Includes.
@@ -61,9 +61,8 @@ enum ENUM_SPREAD_METHOD {
 };
 
 // Input parameters.
-input int InpShift = 0; // Shift
-input ENUM_SPREAD_METHOD InpSpreadMethod =
-    SPREAD_METHOD_ASK_BID_DIFF; // Spread Calculation Method
+input int InpShift = 0;                                                 // Shift
+input ENUM_SPREAD_METHOD InpSpreadMethod = SPREAD_METHOD_ASK_BID_DIFF;  // Spread Calculation Method
 
 // Global indicator buffers.
 double SpreadBuffer[];
@@ -115,10 +114,8 @@ void OnInit() {
 /**
  * Calculate event handler function.
  */
-int OnCalculate(const int rates_total, const int prev_calculated,
-                const datetime &time[], const double &open[],
-                const double &high[], const double &low[],
-                const double &close[], const long &tick_volume[],
+int OnCalculate(const int rates_total, const int prev_calculated, const datetime &time[], const double &open[],
+                const double &high[], const double &low[], const double &close[], const long &tick_volume[],
                 const long &volume[], const int &spread[]) {
   int i, _spread_buf[], _num_spreads;
 
@@ -126,83 +123,81 @@ int OnCalculate(const int rates_total, const int prev_calculated,
     return (0);
   }
 
-  ACQUIRE_BUFFER1(SpreadBuffer);
+  // ACQUIRE_BUFFER1(SpreadBuffer); // @todo: To add in further versions.
 
   if (prev_calculated == 0) {
     // Clearing buffer for testing purposes.
     ArrayInitialize(SpreadBuffer, 0);
 
     switch (InpSpreadMethod) {
-    case SPREAD_METHOD_SYMBOL_INFO:
-    case SPREAD_METHOD_ASK_BID_DIFF:
-    case SPREAD_METHOD_COPY_SPREAD:
-      _num_spreads = CopySpread(Symbol(), PERIOD_CURRENT, ::InpShift,
-                                rates_total, _spread_buf);
+      case SPREAD_METHOD_SYMBOL_INFO:
+      case SPREAD_METHOD_ASK_BID_DIFF:
+      case SPREAD_METHOD_COPY_SPREAD:
+        _num_spreads = CopySpread(Symbol(), PERIOD_CURRENT, ::InpShift, rates_total, _spread_buf);
 
-      if (_num_spreads != rates_total) {
-        Alert("Error: CopySpread() failed. Insufficient data. Requested ",
-              rates_total, " items, but got only ", _num_spreads,
-              ". Error = ", GetLastError(), ".");
+        if (_num_spreads != rates_total) {
+          Alert("Error: CopySpread() failed. Insufficient data. Requested ", rates_total, " items, but got only ",
+                _num_spreads, ". Error = ", GetLastError(), ".");
+          DebugBreak();
+        }
+
+        // We will copy _spread_buf into SpreadBuffer memory-wise.
+        ArraySetAsSeries(_spread_buf, false);
+        for (i = 0; i < rates_total; i++) {
+          SpreadBuffer[i] = _spread_buf[i];
+        }
+        break;
+
+      case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
+        // Copying input spread[] directly into SpreadBuffer.
+        for (i = 0; i < rates_total; i++) {
+          SpreadBuffer[i] = spread[i];
+        }
+        break;
+
+      default:
+        Alert("Error: Invalid spread method passes into InpSpreadMethod!");
         DebugBreak();
-      }
-
-      // We will copy _spread_buf into SpreadBuffer memory-wise.
-      ArraySetAsSeries(_spread_buf, false);
-      for (i = 0; i < rates_total; i++) {
-        SpreadBuffer[i] = _spread_buf[i];
-        Print(_spread_buf[i]);
-      }
-      break;
-
-    case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
-      // Copying input spread[] directly into SpreadBuffer.
-      for (i = 0; i < rates_total; i++) {
-        SpreadBuffer[i] = spread[i];
-      }
-      break;
-
-    default:
-      Alert("Error: Invalid spread method passes into InpSpreadMethod!");
-      DebugBreak();
     }
   } else {
     int _spread;
     double _ask, _bid;
 
     switch (InpSpreadMethod) {
-    case SPREAD_METHOD_SYMBOL_INFO:
-      _spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
-      break;
+      case SPREAD_METHOD_SYMBOL_INFO:
+        _spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
+        break;
 
-    case SPREAD_METHOD_ASK_BID_DIFF:
-      _ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      _bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      _spread = (int)MathRound((_ask - _bid) * pow(10, symbolinfo.GetDigits()));
-      break;
+      case SPREAD_METHOD_ASK_BID_DIFF:
+        _ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+        _bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+        _spread = (int)MathRound((_ask - _bid) * pow(10, symbolinfo.GetDigits()));
+        break;
 
-    case SPREAD_METHOD_COPY_SPREAD:
-      if (CopySpread(_Symbol, 0, ::InpShift, 1, _spread_buf) != 1) {
-        Alert("Error: CopySpread() failed. Insufficient data. Requested 1 "
+      case SPREAD_METHOD_COPY_SPREAD:
+        if (CopySpread(_Symbol, 0, ::InpShift, 1, _spread_buf) != 1) {
+          Alert(
+              "Error: CopySpread() failed. Insufficient data. Requested 1 "
               "item, but got 0. Error = ",
               GetLastError(), ".");
+          DebugBreak();
+        }
+        _spread = _spread_buf[0];
+        break;
+
+      case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
+        _spread = spread[rates_total - 1];
+        break;
+
+      default:
+        Alert("Error: Invalid spread method passes into InpSpreadMethod!");
         DebugBreak();
-      }
-      _spread = _spread_buf[0];
-      break;
-
-    case SPREAD_METHOD_SPREAD_INPUT_ARRAY:
-      _spread = spread[rates_total - 1];
-      break;
-
-    default:
-      Alert("Error: Invalid spread method passes into InpSpreadMethod!");
-      DebugBreak();
     }
 
     SpreadBuffer[rates_total - 1] = _spread;
   }
 
-  RELEASE_BUFFER1(SpreadBuffer);
+  // RELEASE_BUFFER1(SpreadBuffer); // @todo: To add in further versions.
 
   // Returns new prev_calculated.
   return (rates_total);
