@@ -61,8 +61,8 @@ enum ENUM_SPREAD_METHOD {
 };
 
 // Input parameters.
-input int InpShift = 0;                                                 // Shift
-input ENUM_SPREAD_METHOD InpSpreadMethod = SPREAD_METHOD_ASK_BID_DIFF;  // Spread Calculation Method
+input ENUM_SPREAD_METHOD Spread_Method = SPREAD_METHOD_ASK_BID_DIFF;  // Spread Calculation Method
+input int Spread_Shift = 0;                                           // Shift
 
 // Global indicator buffers.
 double SpreadBuffer[];
@@ -78,7 +78,7 @@ void OnInit() {
   SetIndexBuffer(0, SpreadBuffer, INDICATOR_DATA);
   // Initialize indicator for the current account.
   symbolinfo = new SymbolInfo();
-  string short_name = StringFormat("%s(%d)", INDI_SHORT_NAME, ::InpShift);
+  string short_name = StringFormat("%s(%d)", INDI_SHORT_NAME, ::Spread_Shift);
   IndicatorSetString(INDICATOR_SHORTNAME, short_name);
   PlotIndexSetString(0, PLOT_LABEL, "Spread (pips)");
   // PlotIndexSetDouble(0, PLOT_EMPTY_VALUE, 0);
@@ -86,11 +86,11 @@ void OnInit() {
   // Sets first bar from what index will be drawn
   PlotIndexSetInteger(0, PLOT_DRAW_BEGIN, 0);
   // Sets indicator shift.
-  PlotIndexSetInteger(0, PLOT_SHIFT, ::InpShift);
-  PlotIndexSetInteger(1, PLOT_SHIFT, ::InpShift);
-  PlotIndexSetInteger(2, PLOT_SHIFT, ::InpShift);
-  PlotIndexSetInteger(3, PLOT_SHIFT, ::InpShift);
-  PlotIndexSetInteger(4, PLOT_SHIFT, ::InpShift);
+  PlotIndexSetInteger(0, PLOT_SHIFT, ::Spread_Shift);
+  PlotIndexSetInteger(1, PLOT_SHIFT, ::Spread_Shift);
+  PlotIndexSetInteger(2, PLOT_SHIFT, ::Spread_Shift);
+  PlotIndexSetInteger(3, PLOT_SHIFT, ::Spread_Shift);
+  PlotIndexSetInteger(4, PLOT_SHIFT, ::Spread_Shift);
   // Drawing settings (MQL4).
   SetIndexStyle(0, DRAW_LINE);
   SetIndexStyle(1, DRAW_LINE);
@@ -129,11 +129,11 @@ int OnCalculate(const int rates_total, const int prev_calculated, const datetime
     // Clearing buffer for testing purposes.
     ArrayInitialize(SpreadBuffer, 0);
 
-    switch (InpSpreadMethod) {
+    switch (Spread_Method) {
       case SPREAD_METHOD_SYMBOL_INFO:
       case SPREAD_METHOD_ASK_BID_DIFF:
       case SPREAD_METHOD_COPY_SPREAD:
-        _num_spreads = CopySpread(Symbol(), PERIOD_CURRENT, ::InpShift, rates_total, _spread_buf);
+        _num_spreads = CopySpread(Symbol(), PERIOD_CURRENT, ::Spread_Shift, rates_total, _spread_buf);
 
         if (_num_spreads != rates_total) {
           Alert("Error: CopySpread() failed. Insufficient data. Requested ", rates_total, " items, but got only ",
@@ -156,14 +156,14 @@ int OnCalculate(const int rates_total, const int prev_calculated, const datetime
         break;
 
       default:
-        Alert("Error: Invalid spread method passes into InpSpreadMethod!");
+        Alert("Error: Invalid spread method passes into Spread_Method!");
         DebugBreak();
     }
   } else {
     int _spread;
     double _ask, _bid;
 
-    switch (InpSpreadMethod) {
+    switch (Spread_Method) {
       case SPREAD_METHOD_SYMBOL_INFO:
         _spread = (int)SymbolInfoInteger(_Symbol, SYMBOL_SPREAD);
         break;
@@ -175,7 +175,7 @@ int OnCalculate(const int rates_total, const int prev_calculated, const datetime
         break;
 
       case SPREAD_METHOD_COPY_SPREAD:
-        if (CopySpread(_Symbol, 0, ::InpShift, 1, _spread_buf) != 1) {
+        if (CopySpread(_Symbol, 0, ::Spread_Shift, 1, _spread_buf) != 1) {
           Alert(
               "Error: CopySpread() failed. Insufficient data. Requested 1 "
               "item, but got 0. Error = ",
@@ -190,7 +190,7 @@ int OnCalculate(const int rates_total, const int prev_calculated, const datetime
         break;
 
       default:
-        Alert("Error: Invalid spread method passes into InpSpreadMethod!");
+        Alert("Error: Invalid spread method passes into Spread_Method!");
         DebugBreak();
     }
 
